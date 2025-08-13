@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>VM Security Report Dashboard</title>
+    <style>
+        :root {
+            --bg-color: #f4f4f4;
+            --text-color: #333;
+            --button-bg: #e0e0e0;
+        }
+
+        body.dark-mode {
+            --bg-color: #1e1e1e;
+            --text-color: #fff;
+            --button-bg: #444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            padding: 1rem 1.5rem;
+            background-color: var(--bg-color);
+            border-bottom: 1px solid #ccc;
+            flex-shrink: 0;
+        }
+
+        h1 {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            margin-right: 0.3rem;
+        }
+
+        .form-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-row:last-child {
+            margin-bottom: 0;
+        }
+
+        select, button, input[type="date"] {
+            padding: 0.4rem;
+            font-size: 1rem;
+            background-color: var(--button-bg);
+            color: var(--text-color);
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.8;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .download-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+        }
+
+        .download-btn:hover:not(:disabled) {
+            background-color: #218838;
+        }
+
+        .toggle-container {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toggle-btn {
+            position: relative;
+            background-color: #ccc;
+            border: none;
+            border-radius: 20px;
+            width: 60px;
+            height: 30px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .toggle-btn.dark-mode {
+            background-color: #4CAF50;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 24px;
+            height: 24px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: #666;
+        }
+
+        .toggle-btn.dark-mode .toggle-slider {
+            transform: translateX(30px);
+            color: #4CAF50;
+        }
+
+        .toggle-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .iframe-container {
+            flex: 1;
+            padding: 0 1.5rem 1.5rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .action-buttons {
+            margin-bottom: 0.5rem;
+            display: flex;
+            gap: 0.5rem;
+            align-self: flex-end;
+        }
+
+        iframe {
+            width: 100%;
+            flex: 1;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            border-radius: 4px;
+            min-height: 500px;
+        }
+
+        .fullscreen-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+        }
+
+        .fullscreen-btn:hover {
+            background-color: #0056b3;
+        }
+
+        /* Fullscreen styles */
+        .fullscreen-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+        }
+
+        .fullscreen-header {
+            background-color: #333;
+            color: white;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .fullscreen-iframe {
+            flex: 1;
+            width: 100%;
+            border: none;
+            background-color: #fff;
+        }
+
+        .close-fullscreen {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .close-fullscreen:hover {
+            background-color: #c82333;
+        }
+
+        .status-message {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            display: none;
+        }
+
+        body.dark-mode .status-message {
+            background-color: #1b4447;
+            color: #9fdddf;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .toggle-container {
+                margin-left: 0;
+                order: -1;
+                justify-content: center;
+            }
+            
+            select, button, input[type="date"] {
+                width: 100%;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+                align-self: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="form-row">
+            <h1 style="margin: 0">VM Security Report Viewer</h1>
+            <div class="toggle-container">
+                <span class="toggle-label">Dark Mode</span>
+                <button class="toggle-btn" onclick="toggleDarkMode()" id="darkModeToggle">
+                    <div class="toggle-slider">OFF</div>
+                </button>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <label for="vmSelector">Select VM:</label>
+            <select id="vmSelector">
+                <option value="">-- Loading VM list --</option>
+            </select>
+
+            <label for="datePicker">Select Date:</label>
+            <input type="date" id="datePicker" disabled>
+
+            <button onclick="loadReport()">Load Report</button>
+        </div>
+    </div>
+
+    <div class="iframe-container">
+        <div class="status-message" id="statusMessage"></div>
+        
+        <div class="action-buttons" id="actionButtons" style="display: none;">
+            <button class="download-btn" onclick="downloadReport()" id="downloadBtn">
+                💾 Download as HTML
+            </button>
+            <button class="fullscreen-btn" onclick="toggleFullscreen()" id="fullscreenBtn">
+                🔍 View Fullscreen
+            </button>
+        </div>
+        
+        <iframe id="reportFrame" src=""></iframe>
+    </div>
+
+    <!-- Fullscreen overlay -->
+    <div class="fullscreen-overlay" id="fullscreenOverlay">
+        <div class="fullscreen-header">
+            <span id="fullscreenTitle">VM Security Report</span>
+            <button class="close-fullscreen" onclick="toggleFullscreen()">✕ Close Fullscreen</button>
+        </div>
+        <iframe class="fullscreen-iframe" id="fullscreenFrame" src=""></iframe>
+    </div>
+
+    <script>
+        let availableDates = [];
+        let isFullscreen = false;
+        let currentReportUrl = '';
+
+        function toggleDarkMode() {
+            const body = document.body;
+            const toggleBtn = document.getElementById("darkModeToggle");
+            const slider = toggleBtn.querySelector('.toggle-slider');
+            
+            body.classList.toggle("dark-mode");
+            toggleBtn.classList.toggle("dark-mode");
+            
+            if (body.classList.contains("dark-mode")) {
+                slider.textContent = "ON";
+            } else {
+                slider.textContent = "OFF";
+            }
+        }
+
+        function showStatusMessage(message, isError = false) {
+            const statusEl = document.getElementById("statusMessage");
+            statusEl.textContent = message;
+            statusEl.style.display = "block";
+            
+            if (isError) {
+                statusEl.style.backgroundColor = "#f8d7da";
+                statusEl.style.color = "#721c24";
+                if (document.body.classList.contains("dark-mode")) {
+                    statusEl.style.backgroundColor = "#472124";
+                    statusEl.style.color = "#f5c6cb";
+                }
+            } else {
+                statusEl.style.backgroundColor = "#d1ecf1";
+                statusEl.style.color = "#0c5460";
+                if (document.body.classList.contains("dark-mode")) {
+                    statusEl.style.backgroundColor = "#1b4447";
+                    statusEl.style.color = "#9fdddf";
+                }
+            }
+            
+            // Auto-hide success messages after 3 seconds
+            if (!isError) {
+                setTimeout(() => {
+                    statusEl.style.display = "none";
+                }, 3000);
+            }
+        }
+
+        function hideStatusMessage() {
+            document.getElementById("statusMessage").style.display = "none";
+        }
+
+        function getCurrentDate() {
+            const today = new Date();
+            return today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+        }
+
+        function toggleFullscreen() {
+            const overlay = document.getElementById("fullscreenOverlay");
+            const mainFrame = document.getElementById("reportFrame");
+            const fullscreenFrame = document.getElementById("fullscreenFrame");
+            const fullscreenTitle = document.getElementById("fullscreenTitle");
+            const vm = document.getElementById("vmSelector").value;
+            const date = document.getElementById("datePicker").value;
+
+            if (!isFullscreen) {
+                // Enter fullscreen
+                fullscreenFrame.src = mainFrame.src;
+                fullscreenTitle.textContent = `${vm} - ${date} Security Report`;
+                overlay.style.display = "flex";
+                isFullscreen = true;
+            } else {
+                // Exit fullscreen
+                overlay.style.display = "none";
+                isFullscreen = false;
+            }
+        }
+
+        // Close fullscreen with ESC key
+        document.addEventListener("keydown", function(event) {
+            if (event.key === "Escape" && isFullscreen) {
+                toggleFullscreen();
+            }
+        });
+
+        async function fetchJson(url) {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error("Failed to fetch " + url);
+            return await res.json();
+        }
+
+        async function populateVMs() {
+            try {
+                const data = await fetchJson("vm-list.json");
+                const vmSelector = document.getElementById("vmSelector");
+                vmSelector.innerHTML = '<option value="">-- Select VM --</option>';
+                data.vms.forEach(vm => {
+                    const opt = document.createElement("option");
+                    opt.value = vm;
+                    opt.textContent = vm;
+                    vmSelector.appendChild(opt);
+                });
+            } catch (err) {
+                showStatusMessage("Error loading VM list: " + err.message, true);
+            }
+        }
+
+        async function populateDates(vm) {
+            const datePicker = document.getElementById("datePicker");
+            const actionButtons = document.getElementById("actionButtons");
+            
+            datePicker.disabled = true;
+            datePicker.value = "";
+            actionButtons.style.display = "none";
+            hideStatusMessage();
+
+            try {
+                showStatusMessage("Loading available dates for " + vm + "...");
+                
+                const manifest = await fetchJson(vm + "/manifest.json");
+                availableDates = manifest.dates; // e.g. ["2025-07-30", "2025-07-31"]
+                datePicker.disabled = false;
+                datePicker.setAttribute("min", availableDates[0]);
+                datePicker.setAttribute("max", availableDates[availableDates.length - 1]);
+
+                // AUTO-LOAD CURRENT DATE LOGIC
+                const currentDate = getCurrentDate();
+                if (availableDates.includes(currentDate)) {
+                    datePicker.value = currentDate;
+                    showStatusMessage(`Auto-loaded today's date (${currentDate})`);
+                    // Automatically load the report for current date
+                    setTimeout(() => {
+                        loadReport();
+                    }, 500);
+                } else {
+                    // If current date not available, use the most recent date
+                    const mostRecentDate = availableDates[availableDates.length - 1];
+                    datePicker.value = mostRecentDate;
+                    showStatusMessage(`Current date not available. Auto-loaded most recent date (${mostRecentDate})`);
+                    // Automatically load the most recent report
+                    setTimeout(() => {
+                        loadReport();
+                    }, 500);
+                }
+
+                datePicker.addEventListener("input", function () {
+                    if (!availableDates.includes(this.value)) {
+                        showStatusMessage("Selected date not available for this VM", true);
+                        this.value = "";
+                    }
+                });
+            } catch (err) {
+                showStatusMessage("Error loading manifest for " + vm + ": " + err.message, true);
+            }
+        }
+
+        function loadReport() {
+            const vm = document.getElementById("vmSelector").value;
+            const date = document.getElementById("datePicker").value;
+            const frame = document.getElementById("reportFrame");
+            const actionButtons = document.getElementById("actionButtons");
+
+            if (!vm || !date) {
+                showStatusMessage("Please select VM and date.", true);
+                return;
+            }
+
+            hideStatusMessage();
+            showStatusMessage(`Loading report for ${vm} on ${date}...`);
+            
+            currentReportUrl = `${vm}/${date}.html`;
+            frame.src = currentReportUrl;
+            actionButtons.style.display = "flex";
+            
+            // Show success message after iframe loads
+            frame.onload = function() {
+                showStatusMessage(`Report loaded successfully for ${vm} - ${date}`);
+            };
+            
+            frame.onerror = function() {
+                showStatusMessage(`Error loading report for ${vm} - ${date}`, true);
+            };
+        }
+
+        async function downloadReport() {
+            const vm = document.getElementById("vmSelector").value;
+            const date = document.getElementById("datePicker").value;
+            const downloadBtn = document.getElementById("downloadBtn");
+
+            if (!vm || !date || !currentReportUrl) {
+                showStatusMessage("No report loaded to download", true);
+                return;
+            }
+
+            // Disable button during download
+            downloadBtn.disabled = true;
+            downloadBtn.textContent = "⏳ Downloading...";
+            
+            try {
+                showStatusMessage("Preparing download...");
+                
+                // Fetch the HTML content
+                const response = await fetch(currentReportUrl);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch report: ${response.status}`);
+                }
+                
+                const htmlContent = await response.text();
+                
+                // Create blob and download
+                const blob = new Blob([htmlContent], { type: 'text/html' });
+                const url = window.URL.createObjectURL(blob);
+                
+                // Create temporary download link
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${vm}_Security_Report_${date}.html`;
+                document.body.appendChild(a);
+                a.click();
+                
+                // Cleanup
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                showStatusMessage(`Successfully downloaded: ${vm}_Security_Report_${date}.html`);
+                
+            } catch (err) {
+                showStatusMessage("Download failed: " + err.message, true);
+            } finally {
+                // Re-enable button
+                downloadBtn.disabled = false;
+                downloadBtn.textContent = "💾 Download as HTML";
+            }
+        }
+
+        document.getElementById("vmSelector").addEventListener("change", function () {
+            const selectedVM = this.value;
+            const actionButtons = document.getElementById("actionButtons");
+            
+            if (selectedVM) {
+                populateDates(selectedVM);
+            } else {
+                document.getElementById("datePicker").disabled = true;
+                document.getElementById("datePicker").value = "";
+                document.getElementById("reportFrame").src = "";
+                actionButtons.style.display = "none";
+                currentReportUrl = "";
+                hideStatusMessage();
+            }
+        });
+
+        // Initialize
+        populateVMs();
+    </script>
+</body>
+</html>
