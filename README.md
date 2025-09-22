@@ -1,4 +1,4 @@
-# Threat Analysis Report Tool
+# mini DFIR - Threat Analysis Report Tool
 
 A comprehensive Azure-based security monitoring and threat analysis solution for Windows virtual machines with automated deployment, centralized reporting, and web dashboard visualization.
 
